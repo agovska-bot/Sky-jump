@@ -1,7 +1,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = process.env.API_KEY ? new GoogleGenAI({ apiKey: process.env.API_KEY }) : null;
 
 // Local fallback puns to use when API is rate-limited or fails
 const LOCAL_PUNS = [
@@ -36,6 +36,8 @@ export async function getEncouragement(context: string): Promise<string> {
   }
 
   try {
+    if (!ai) return LOCAL_PUNS[Math.floor(Math.random() * LOCAL_PUNS.length)];
+
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Context: The player is playing a happy 2D parkour game called 'Sky-High Hops'. ${context}. Give a very short, cheerful, and punny sentence of encouragement. No more than 8 words.`,

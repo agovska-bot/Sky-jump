@@ -10,6 +10,31 @@ interface GameCanvasProps {
 const GameCanvas: React.FC<GameCanvasProps> = ({ gameState }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Polyfill for roundRect for older browsers
+  const drawRoundRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number | number[]) => {
+    if (ctx.roundRect) {
+      ctx.roundRect(x, y, w, h, r);
+      return;
+    }
+    
+    // Manual implementation for older browsers
+    if (typeof r === 'number') {
+      r = [r, r, r, r];
+    }
+    
+    ctx.beginPath();
+    ctx.moveTo(x + r[0], y);
+    ctx.lineTo(x + w - r[1], y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r[1]);
+    ctx.lineTo(x + w, y + h - r[2]);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r[2], y + h);
+    ctx.lineTo(x + r[3], y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r[3]);
+    ctx.lineTo(x, y + r[0]);
+    ctx.quadraticCurveTo(x, y, x + r[0], y);
+    ctx.closePath();
+  };
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -85,7 +110,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState }) => {
       // 1. Subtle Bottom Shadow
       ctx.fillStyle = 'rgba(0,0,0,0.15)';
       ctx.beginPath();
-      ctx.roundRect(p.x + 2, p.y + 4, p.width, platformHeight, radius);
+      drawRoundRect(ctx, p.x + 2, p.y + 4, p.width, platformHeight, radius);
       ctx.fill();
 
       // 2. Main Body with Gradient
@@ -95,13 +120,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState }) => {
       
       ctx.fillStyle = bodyGrad;
       ctx.beginPath();
-      ctx.roundRect(p.x, p.y, p.width, platformHeight, radius);
+      drawRoundRect(ctx, p.x, p.y, p.width, platformHeight, radius);
       ctx.fill();
 
       // 3. Top Glossy Highlight
       ctx.fillStyle = 'rgba(255,255,255,0.3)';
       ctx.beginPath();
-      ctx.roundRect(p.x + 5, p.y + 3, p.width - 10, platformHeight * 0.3, radius / 2);
+      drawRoundRect(ctx, p.x + 5, p.y + 3, p.width - 10, platformHeight * 0.3, radius / 2);
       ctx.fill();
 
       // 4. Sharp Shine Line
@@ -119,7 +144,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState }) => {
         ctx.strokeStyle = '#fbcfe8';
         ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.roundRect(p.x, p.y, p.width, 10, 5);
+        drawRoundRect(ctx, p.x, p.y, p.width, 10, 5);
         ctx.stroke();
       } else if (p.type === PlatformType.BOOSTER) {
         ctx.fillStyle = 'rgba(255,255,255,0.6)';
@@ -161,13 +186,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState }) => {
 
     ctx.fillStyle = 'rgba(0,0,0,0.2)';
     ctx.beginPath();
-    ctx.roundRect(player.pos.x + 3 + xOffset, player.pos.y + 4, drawW, drawH, 10);
+    drawRoundRect(ctx, player.pos.x + 3 + xOffset, player.pos.y + 4, drawW, drawH, 10);
     ctx.fill();
 
     ctx.fillStyle = COLORS.PLAYER;
     if (highSpeedMode) ctx.fillStyle = '#fef3c7'; 
     ctx.beginPath();
-    ctx.roundRect(player.pos.x + (player.width - drawW)/2 + xOffset, player.pos.y + (player.height - drawH), drawW, drawH, 10);
+    drawRoundRect(ctx, player.pos.x + (player.width - drawW)/2 + xOffset, player.pos.y + (player.height - drawH), drawW, drawH, 10);
     ctx.fill();
 
     // Face details
