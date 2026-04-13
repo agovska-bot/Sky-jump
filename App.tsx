@@ -61,6 +61,8 @@ const App: React.FC = () => {
     targetMeters: DIFFICULTY_CONFIG.EASY.target,
     isSelectingMode: true,
     completionCounts: loadCompletions(),
+    boosterTimeRemaining: 0,
+    airTime: 0,
   });
 
   const [encouragement, setEncouragement] = useState("Choose your challenge to start.");
@@ -138,7 +140,7 @@ const App: React.FC = () => {
       }
       phaseRemainingSteps.current--;
 
-      // 2. Pick a randomized Platform Type - HIGH FREQUENCY
+      // 2. Pick a randomized Platform Type
       const typeSeed = Math.random();
       let type = PlatformType.NORMAL;
       let color = COLORS.CLOUD;
@@ -148,33 +150,56 @@ const App: React.FC = () => {
 
       // In CHAOS mode, every platform is special
       const isChaos = difficulty === Difficulty.CHAOS;
-      const effectiveSeed = isChaos ? typeSeed * 0.9 : typeSeed; // Shift seed to avoid NORMAL
 
-      if (effectiveSeed > 0.88) {
-        type = PlatformType.BOOSTER;
-        color = COLORS.BOOSTER;
-      } else if (effectiveSeed > 0.78) {
-        type = PlatformType.BOUNCY;
-        color = COLORS.BOUNCY;
-      } else if (effectiveSeed > 0.68) {
-        type = PlatformType.ICE;
-        color = COLORS.ICE;
-      } else if (effectiveSeed > 0.58) {
-        type = PlatformType.SLOW;
-        color = COLORS.SLOW;
-      } else if (effectiveSeed > 0.48 && (difficulty !== Difficulty.EASY || isChaos)) {
-        type = PlatformType.MOVING;
-        color = COLORS.MOVING;
-        moveRange = 50 + Math.random() * 80;
-        moveSpeed = 0.7 + Math.random() * 1.1;
-      } else if (effectiveSeed > 0.35 && (difficulty === Difficulty.HARD || isChaos)) {
-        type = PlatformType.FRAGILE;
-        color = COLORS.FRAGILE;
-        decay = 65; 
-      } else if (isChaos) {
-        // Fallback for Chaos to ensure NO normal platforms
-        type = PlatformType.BOOSTER;
-        color = COLORS.BOOSTER;
+      if (isChaos) {
+        // Chaos logic: 100% special platforms distributed across all types
+        const chaosSeed = Math.random();
+        if (chaosSeed > 0.84) {
+          type = PlatformType.BOOSTER;
+          color = COLORS.BOOSTER;
+        } else if (chaosSeed > 0.68) {
+          type = PlatformType.BOUNCY;
+          color = COLORS.BOUNCY;
+        } else if (chaosSeed > 0.52) {
+          type = PlatformType.ICE;
+          color = COLORS.ICE;
+        } else if (chaosSeed > 0.36) {
+          type = PlatformType.SLOW;
+          color = COLORS.SLOW;
+        } else if (chaosSeed > 0.18) {
+          type = PlatformType.MOVING;
+          color = COLORS.MOVING;
+          moveRange = 50 + Math.random() * 80;
+          moveSpeed = 0.7 + Math.random() * 1.1;
+        } else {
+          type = PlatformType.FRAGILE;
+          color = COLORS.FRAGILE;
+          decay = 65;
+        }
+      } else {
+        // Normal modes: Special platforms are much rarer (approx 15-25% total)
+        if (typeSeed > 0.96 && difficulty !== Difficulty.EASY) {
+          type = PlatformType.BOOSTER;
+          color = COLORS.BOOSTER;
+        } else if (typeSeed > 0.92) {
+          type = PlatformType.BOUNCY;
+          color = COLORS.BOUNCY;
+        } else if (typeSeed > 0.88) {
+          type = PlatformType.ICE;
+          color = COLORS.ICE;
+        } else if (typeSeed > 0.84) {
+          type = PlatformType.SLOW;
+          color = COLORS.SLOW;
+        } else if (typeSeed > 0.80 && difficulty !== Difficulty.EASY) {
+          type = PlatformType.MOVING;
+          color = COLORS.MOVING;
+          moveRange = 50 + Math.random() * 80;
+          moveSpeed = 0.7 + Math.random() * 1.1;
+        } else if (typeSeed > 0.76 && difficulty === Difficulty.HARD) {
+          type = PlatformType.FRAGILE;
+          color = COLORS.FRAGILE;
+          decay = 65; 
+        }
       }
 
       // 3. Determine Height Change based on Phase
@@ -302,6 +327,8 @@ const App: React.FC = () => {
       difficulty: difficulty,
       targetMeters: config.target,
       isSelectingMode: false,
+      boosterTimeRemaining: 0,
+      airTime: 0,
     }));
     
     const messages = [
@@ -377,6 +404,8 @@ const App: React.FC = () => {
       let isGameWon = prev.isGameWon;
       let isGameOver = prev.isGameOver;
       let updatedCompletionCounts = { ...prev.completionCounts };
+      let boosterTime = prev.boosterTimeRemaining;
+      let airTime = prev.airTime;
 
       let newPlatformsList = [...prev.platforms];
       if (newPlayer.pos.x + 4000 > lastGeneratedX.current) {
@@ -428,6 +457,7 @@ const App: React.FC = () => {
           if (currentP.type === PlatformType.BOOSTER) {
             // Apply massive 10x speed boost
             newPlayer.vel.x = config.maxSpeed * 10;
+            boosterTime = 180; // 3 seconds at 60fps
             // Add some particles for effect
             for(let j=0; j<10; j++) {
               newParticles.push({
@@ -486,8 +516,10 @@ const App: React.FC = () => {
 
       // Dynamic speed cap to allow for extreme boosts
       let maxS = config.maxSpeed * 1.3;
-      if (newPlayer.vel.x > config.maxSpeed * 5) {
+
+      if (boosterTime > 0) {
         maxS = config.maxSpeed * 12; // Allow extreme boost
+        boosterTime--;
       } else if (newPlayer.vel.x > 18) {
         maxS = config.maxSpeed * 2.8;
       }
@@ -495,6 +527,20 @@ const App: React.FC = () => {
       newPlayer.vel.x = Math.max(-maxS, Math.min(maxS, newPlayer.vel.x));
 
       newPlayer.isGrounded = grounded;
+      
+      const lowestPlatformY = updatedPlatforms.reduce((max, p) => Math.max(max, p.y), 0);
+      const isBelowAllPlatforms = newPlayer.pos.y > lowestPlatformY;
+
+      if (grounded || newPlayer.isWallSliding || !isBelowAllPlatforms) {
+        airTime = 0;
+      } else {
+        airTime++;
+        if (airTime > 300) { // 5 seconds at 60fps
+          isGameOver = true;
+          pendingEncouragementContext.current = "Fell too far into the abyss!";
+        }
+      }
+
       newPlayer.isWallSliding = touchingWall && !grounded && newPlayer.vel.y > 0;
       
       if (newPlayer.isWallSliding) {
@@ -525,11 +571,6 @@ const App: React.FC = () => {
 
       const meters = Math.max(prev.score, Math.floor(newPlayer.pos.x));
 
-      if (newPlayer.pos.y > prev.cameraY + window.innerHeight + 1200) {
-        isGameOver = true;
-        pendingEncouragementContext.current = `Coaster derailed at ${meters}m.`;
-      }
-
       if (meters >= prev.targetMeters && !prev.isGameWon) {
         isGameWon = true;
         updatedCompletionCounts[prev.difficulty] += 1;
@@ -551,8 +592,10 @@ const App: React.FC = () => {
         score: meters,
         isGameOver,
         isGameWon,
-        highSpeedMode: newPlayer.vel.x > 18,
+        highSpeedMode: newPlayer.vel.x > 18 || boosterTime > 0,
         completionCounts: updatedCompletionCounts,
+        boosterTimeRemaining: boosterTime,
+        airTime: airTime,
       };
     });
   }, [generatePlatforms]);
@@ -581,6 +624,7 @@ const App: React.FC = () => {
         onRestart={resetGame}
         onSelectMode={selectMode}
         onInput={setInput}
+        airTime={gameState.airTime}
       />
     </div>
   );

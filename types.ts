@@ -75,6 +75,8 @@ export interface GameState {
   targetMeters: number;
   isSelectingMode: boolean;
   completionCounts: Record<Difficulty, number>; // New field to track wins
+  boosterTimeRemaining: number;
+  airTime: number;
 }
 
 export interface Encouragement {

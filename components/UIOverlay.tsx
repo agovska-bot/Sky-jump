@@ -13,6 +13,7 @@ interface UIOverlayProps {
   onRestart: () => void;
   onSelectMode: (mode: Difficulty) => void;
   onInput: (key: string, active: boolean) => void;
+  airTime: number;
 }
 
 const UIOverlay: React.FC<UIOverlayProps> = ({ 
@@ -25,7 +26,8 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
   completionCounts,
   onRestart,
   onSelectMode,
-  onInput
+  onInput,
+  airTime
 }) => {
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
@@ -83,6 +85,12 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
               {progress.toFixed(1)}% to {targetMeters.toLocaleString()}M
             </p>
           </div>
+
+          {airTime > 180 && !isGameOver && !isGameWon && (
+            <div className="absolute top-24 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-2 rounded-full font-bold animate-pulse shadow-xl border-2 border-white z-40">
+              ⚠️ FALLING! {((300 - airTime) / 60).toFixed(1)}s
+            </div>
+          )}
           
           <div className="bg-white/90 backdrop-blur-md p-2 md:p-4 rounded-xl shadow-md border-r-4 border-amber-300 max-w-[140px] md:max-w-xs transition-all duration-300 pointer-events-auto">
             <p className="text-amber-600 font-bold italic text-[9px] md:text-xs uppercase tracking-tighter mb-1">Spirit Guide</p>
