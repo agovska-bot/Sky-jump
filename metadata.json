@@ -1,0 +1,5 @@
+{
+  "name": "Sky Jump",
+  "description": "A vibrant, light-hearted 2D parkour game featuring a dreamy cloudscape. Navigate through floating islands using unique controls (W/S for movement, Space to jump) and receive encouragement from your AI Spirit Guide.",
+  "requestFramePermissions": []
+}
